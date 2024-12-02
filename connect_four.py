@@ -71,7 +71,6 @@ class CVC_ConnectFour():
                 self.current_player = COMPUTER_2 if self.current_player == COMPUTER_1 else COMPUTER_1
                 return
 
-
     def is_terminal(self):
         if self.is_full():
             return True
@@ -97,6 +96,13 @@ class CVC_ConnectFour():
             policy = self.policies[1]
         
         if policy == 1:
+            # Monte Carlo Tree Search
+            for col in self.get_legal_moves():
+                test_state = deepcopy(self)
+                test_state.perform_move(col)
+                if test_state.is_winning_move(*test_state.last_move):  # Prevent opponent win
+                    return col
+
             # Monte Carlo Tree Search
             mcts_bot = MCTS(player=self.current_player)
             root = Node(state=self)
@@ -216,10 +222,7 @@ class PVC_ConnectFour():
         return new_game
 
     def get_legal_moves(self):
-        moves = [col for col in range(COLS) if self.board[ROWS - 1][col] == EMPTY]
-        if not moves:
-            print("No legal moves available.")
-        return moves
+        return [col for col in range(COLS) if self.board[ROWS - 1][col] == EMPTY]
 
     def perform_move(self, col):
         for row in range(ROWS):
@@ -230,19 +233,14 @@ class PVC_ConnectFour():
                 return
 
     def is_terminal(self):
-        # Check if the board is full
         if self.is_full():
             return True
-
-        # Check for a winning move for each column
         for col in range(COLS):
             for row in range(ROWS):
                 if self.board[row][col] == EMPTY:
                     continue
                 if self.is_winning_move(row, col):
                     return True
-
-        # No win and the board is not full; not terminal
         return False
 
     def get_winner(self):
