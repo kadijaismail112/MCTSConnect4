@@ -1,5 +1,7 @@
 import numpy as np
 import random
+from mcts import MCTS, Node
+from copy import deepcopy
 
 ROWS = 6
 COLS = 7
@@ -12,10 +14,11 @@ PLAYER_1 = 1
 PLAYER_2 = 2
 
 class CVC_ConnectFour():
-    def __init__(self, policy_1 : int, policy_2 : int):
+    def __init__(self, policy_1: int, policy_2: int):
         self.board = np.zeros((ROWS, COLS), dtype=int)
         self.current_player = COMPUTER_1
         self.policies = [policy_1, policy_2]
+        self.last_move = None  # Initialize the last_move attribute
 
     def print_board(self):
         print(np.flip(self.board, 0))
@@ -26,11 +29,11 @@ class CVC_ConnectFour():
         for row in range(ROWS):
             if self.board[row][col] == EMPTY:
                 self.board[row][col] = self.current_player
+                self.last_move = (row, col)  # Update last_move here
                 return row, col
         return None
 
     def is_winning_move(self, row, col):
-        # Check horizontal, vertical, and diagonal connections
         return (self.check_direction(row, col, 1, 0) or  # Horizontal
                 self.check_direction(row, col, 0, 1) or  # Vertical
                 self.check_direction(row, col, 1, 1) or  # Diagonal /
@@ -49,7 +52,43 @@ class CVC_ConnectFour():
         return count >= 3
 
     def is_full(self):
-        return all(self.board[ROWS-1, :] != EMPTY)
+        return all(self.board[ROWS - 1, :] != EMPTY)
+
+    def copy(self):
+        new_game = CVC_ConnectFour(self.policies[0], self.policies[1])
+        new_game.board = self.board.copy()
+        new_game.current_player = self.current_player
+        return new_game
+
+    def get_legal_moves(self):
+        return [col for col in range(COLS) if self.board[ROWS - 1][col] == EMPTY]
+
+    def perform_move(self, col):
+        for row in range(ROWS):
+            if self.board[row][col] == EMPTY:
+                self.board[row][col] = self.current_player
+                self.last_move = (row, col)  # Update last_move here
+                self.current_player = COMPUTER_2 if self.current_player == COMPUTER_1 else COMPUTER_1
+                return
+
+
+    def is_terminal(self):
+        if self.is_full():
+            return True
+        for col in range(COLS):
+            for row in range(ROWS):
+                if self.board[row][col] == EMPTY:
+                    continue
+                if self.is_winning_move(row, col):
+                    return True
+        return False
+
+    def get_winner(self):
+        for col in range(COLS):
+            for row in range(ROWS):
+                if self.board[row][col] != EMPTY and self.is_winning_move(row, col):
+                    return self.board[row][col]
+        return None
 
     def computer_move(self):
         if self.current_player == COMPUTER_1:
@@ -58,9 +97,22 @@ class CVC_ConnectFour():
             policy = self.policies[1]
         
         if policy == 1:
-            # KADIJA TO DO
             # Monte Carlo Tree Search
-             raise Exception("KADIJA TO DO: Monte Carlo Tree Search")
+            mcts_bot = MCTS(player=self.current_player)
+            root = Node(state=self)
+            move = mcts_bot.best_move(root, simulations=1000)
+            if not isinstance(move, int):
+                raise ValueError(f"Invalid move returned: {move}")
+            if move is None:
+                # Fallback: Block if possible
+                for col in self.get_legal_moves():
+                    test_state = deepcopy(self)
+                    test_state.perform_move(col)
+                    if test_state.is_winning_move(*test_state.last_move):
+                        return col
+                # Default: Choose any legal move
+                return random.choice(self.get_legal_moves())
+            return move
         
         elif policy == 2:
             # Simple heuristic: First available column
@@ -157,13 +209,68 @@ class PVC_ConnectFour():
     def is_full(self):
         return all(self.board[ROWS-1, :] != EMPTY)
 
+    def copy(self):
+        new_game = CVC_ConnectFour(self.policies[0], self.policies[1])
+        new_game.board = self.board.copy()
+        new_game.current_player = self.current_player
+        return new_game
+
+    def get_legal_moves(self):
+        moves = [col for col in range(COLS) if self.board[ROWS - 1][col] == EMPTY]
+        if not moves:
+            print("No legal moves available.")
+        return moves
+
+    def perform_move(self, col):
+        for row in range(ROWS):
+            if self.board[row][col] == EMPTY:
+                self.board[row][col] = self.current_player
+                self.last_move = (row, col)  # Update last_move here
+                self.current_player = COMPUTER_2 if self.current_player == COMPUTER_1 else COMPUTER_1
+                return
+
+    def is_terminal(self):
+        # Check if the board is full
+        if self.is_full():
+            return True
+
+        # Check for a winning move for each column
+        for col in range(COLS):
+            for row in range(ROWS):
+                if self.board[row][col] == EMPTY:
+                    continue
+                if self.is_winning_move(row, col):
+                    return True
+
+        # No win and the board is not full; not terminal
+        return False
+
+    def get_winner(self):
+        for col in range(COLS):
+            for row in range(ROWS):
+                if self.board[row][col] != EMPTY and self.is_winning_move(row, col):
+                    return self.board[row][col]
+        return None
+
     def computer_move(self):
         policy = self.policy
         
         if policy == 1:
-            # KADIJA TO DO
-            # Monte Carlo Tree Search
-             raise Exception("KADIJA TO DO: Monte Carlo Tree Search")
+            mcts_bot = MCTS(player=self.current_player)
+            root = Node(state=self)
+            move = mcts_bot.best_move(root, simulations=1000)
+            if not isinstance(move, int):
+                raise ValueError(f"Invalid move returned: {move}")
+            if move is None:
+                # Fallback: Block if possible
+                for col in self.get_legal_moves():
+                    test_state = deepcopy(self)
+                    test_state.perform_move(col)
+                    if test_state.is_winning_move(*test_state.last_move):
+                        return col
+                # Default: Choose any legal move
+                return random.choice(self.get_legal_moves())
+            return move
         
         elif policy == 2:
             # Simple Heuristic: Choose the first available column
