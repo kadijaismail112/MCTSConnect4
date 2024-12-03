@@ -34,10 +34,12 @@ class CVC_ConnectFour():
         return None
 
     def is_winning_move(self, row, col):
-        return (self.check_direction(row, col, 1, 0) or  # Horizontal
+        result = (self.check_direction(row, col, 1, 0) or  # Horizontal
                 self.check_direction(row, col, 0, 1) or  # Vertical
                 self.check_direction(row, col, 1, 1) or  # Diagonal /
                 self.check_direction(row, col, 1, -1))   # Diagonal \
+        return result
+        
 
     def check_direction(self, row, col, delta_row, delta_col):
         count = 0
@@ -64,6 +66,8 @@ class CVC_ConnectFour():
         return [col for col in range(COLS) if self.board[ROWS - 1][col] == EMPTY]
 
     def perform_move(self, col):
+        if col not in self.get_legal_moves():
+            raise ValueError(f"Invalid move {col}")
         for row in range(ROWS):
             if self.board[row][col] == EMPTY:
                 self.board[row][col] = self.current_player
@@ -72,14 +76,8 @@ class CVC_ConnectFour():
                 return
 
     def is_terminal(self):
-        if self.is_full():
+        if self.get_winner() is not None or not self.get_legal_moves():
             return True
-        for col in range(COLS):
-            for row in range(ROWS):
-                if self.board[row][col] == EMPTY:
-                    continue
-                if self.is_winning_move(row, col):
-                    return True
         return False
 
     def get_winner(self):
@@ -213,7 +211,7 @@ class PVC_ConnectFour():
         return count >= 3
 
     def is_full(self):
-        return all(self.board[ROWS-1, :] != EMPTY)
+        return all(self.board[ROWS - 1, :] != EMPTY)
 
     def copy(self):
         new_game = CVC_ConnectFour(self.policies[0], self.policies[1])
@@ -237,9 +235,7 @@ class PVC_ConnectFour():
             return True
         for col in range(COLS):
             for row in range(ROWS):
-                if self.board[row][col] == EMPTY:
-                    continue
-                if self.is_winning_move(row, col):
+                if self.board[row][col] != EMPTY and self.is_winning_move(row, col):
                     return True
         return False
 
@@ -254,6 +250,14 @@ class PVC_ConnectFour():
         policy = self.policy
         
         if policy == 1:
+            # Monte Carlo Tree Search
+            for col in self.get_legal_moves():
+                test_state = deepcopy(self)
+                test_state.perform_move(col)
+                if test_state.is_winning_move(*test_state.last_move):  # Prevent opponent win
+                    return col
+
+            # Monte Carlo Tree Search
             mcts_bot = MCTS(player=self.current_player)
             root = Node(state=self)
             move = mcts_bot.best_move(root, simulations=1000)

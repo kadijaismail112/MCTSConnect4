@@ -48,11 +48,11 @@ class MCTS:
             if move not in tried_moves:
                 new_state = deepcopy(node.state)
                 new_state.perform_move(move)
-                # Add the node even if it blocks the opponent's win
                 child_node = Node(state=new_state, parent=node)
                 node.children.append(child_node)
                 return child_node
 
+        print("Expand: No valid moves to expand.")
         return None
 
     def simulate(self, state):
@@ -63,19 +63,26 @@ class MCTS:
             if not legal_moves:
                 break
 
-            # Check for blocking moves
+            # Prioritize blocking or winning moves
             for move in legal_moves:
                 temp_state = deepcopy(current_state)
                 temp_state.perform_move(move)
-                if temp_state.is_winning_move(*temp_state.last_move):  # Prevent opponent win
+                if temp_state.is_winning_move(*temp_state.last_move):  # Favor critical moves
                     current_state.perform_move(move)
                     break
-            else:  # If no blocking move, pick randomly
+            else:
+                # Default to random move if no critical moves exist
                 move = random.choice(legal_moves)
                 current_state.perform_move(move)
 
+        # Evaluate the terminal state
         winner = current_state.get_winner()
-        return 1 if winner == self.player else -1 if winner else 0
+        if winner == self.player:
+            return 1  # Win for the computer
+        elif winner:  # Opponent wins
+            return -1
+        else:  # Draw
+            return 0
 
     def backpropagate(self, node, result):
         while node is not None:
@@ -87,16 +94,24 @@ class MCTS:
     def best_move(self, root, simulations=1000):
         for _ in range(simulations):
             leaf = self.select(root)
-            if leaf is None:  # Skip simulation if no leaf is found
+            if leaf is None:
                 continue
             result = self.simulate(leaf.state)
             self.backpropagate(leaf, result)
 
         if not root.children:
-            # Fallback: Randomly select from legal moves if tree expansion fails
-            print("Tree expansion failed. Falling back to random legal move.")
+            print("Tree expansion failed. Falling back to blocking logic.")
             legal_moves = root.state.get_legal_moves()
             if legal_moves:
+                # Check for blocking or winning moves
+                for move in legal_moves:
+                    test_state = deepcopy(root.state)
+                    test_state.perform_move(move)
+                    if test_state.is_winning_move(*test_state.last_move):
+                        print(f"Fallback: Blocking or Winning Move Found at Column {move}")
+                        return move
+                # Default to random move if no critical move exists
+                print("Fallback: No blocking or winning move found. Choosing random legal move.")
                 return random.choice(legal_moves)
             raise ValueError("No legal moves available for fallback.")
 
