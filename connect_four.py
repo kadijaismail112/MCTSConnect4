@@ -1164,5 +1164,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# COMMENT OUT LINES 116 AND 104 IN MCTS.PY

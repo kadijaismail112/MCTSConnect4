@@ -101,8 +101,8 @@ class MCTS:
             self.backpropagate(leaf, result)
 
         if not root.children:
-            if not root.state.test_mode:
-                print("Tree expansion failed. Falling back to blocking logic.")
+            #if not root.state.test_mode:
+            print("Tree expansion failed. Falling back to blocking logic.")
             legal_moves = root.state.get_legal_moves()
             if legal_moves:
                 # Check for blocking or winning moves
@@ -110,12 +110,12 @@ class MCTS:
                     test_state = deepcopy(root.state)
                     test_state.perform_move(move)
                     if test_state.is_winning_move(*test_state.last_move):
-                        if not root.state.test_mode:
-                            print(f"Fallback: Blocking or Winning Move Found at Column {move}")
+                        #if not root.state.test_mode:
+                        print(f"Fallback: Blocking or Winning Move Found at Column {move}")
                         return move
-                if not root.state.test_mode:
-                    # Default to random move if no critical move exists
-                    print("Fallback: No blocking or winning move found. Choosing random legal move.")
+                #if not root.state.test_mode:
+                # Default to random move if no critical move exists
+                print("Fallback: No blocking or winning move found. Choosing random legal move.")
                 return random.choice(legal_moves)
             root.state.print_board()
             raise ValueError("No legal moves available for fallback.")
